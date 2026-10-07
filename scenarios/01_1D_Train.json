@@ -1,0 +1,14 @@
+{
+  "track_length": 5000,
+  "sensors": {
+    "GPS": {
+      "dt_s": 1,
+      "sigma_m": 5.0
+    }
+  },
+  "train": {
+    "s_0": 0.0,
+    "v_0": 55.55
+  },
+  "seed": 31
+}
