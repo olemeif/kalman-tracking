@@ -3,6 +3,26 @@ A learning project on state estimation and target tracking. It starts with a 1D 
 
 The filters are developed in Python first and then ported to C++. Python remains the layer for simulation, evaluation and plotting.
 
+## Setup (Python)
+
+Requires Python 3.13 or newer.
+
+Clone the repository then navigate to the project directory, create a virtual environment and install the dependencies:
+
+```sh
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e .
+```
+
+`pip install -e .` installs the dependencies and makes the shared modules in `python/` (e.g. `helpers`) importable from every stage. Then run a stage, e.g.:
+
+```sh
+python python/01_1D_Train/Train_1D.py
+```
+
+If you get `ModuleNotFoundError: No module named 'helpers'`, the virtual environment is not active or `pip install -e .` has not been run.
+
 ## Stage 1: 1D Kalman filter for a train on a straight track
 
 A train moves along a straight 5 km track at a constant speed of 200 km/h (≈ 55.6 m/s). A position sensor measures the train's position every $T_s$ seconds with Gaussian noise ($\sigma = 5$ m).
