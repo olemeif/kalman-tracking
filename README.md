@@ -3,6 +3,21 @@ A learning project on state estimation and target tracking. It starts with a 1D 
 
 The filters are developed in Python first and then ported to C++. Python remains the layer for simulation, evaluation and plotting.
 
+## Project status
+ 
+| Stage | Content | Status |
+| ----- | ------- | ------ |
+| 1 | 1D Kalman filter (constant velocity), Monte Carlo consistency evaluation (RMSE vs. filter σ, ANEES) | **Done** |
+| 2 | 3rd-order model, Test cases, process noise comparison, scenario with real speed changes | In progress |
+| 3 | 2D tracking of a single target, linear Kalman filter with position measurements | Planned |
+| 4 | Radar measurements (range, bearing): Extended Kalman filter | Planned |
+| 5 | Multi-target tracking: clutter, missed detections, gating, data association, track management | Planned |
+| 6 | Validation: scenario library and metrics (RMSE, NEES, track continuity, ID switches, false tracks) | Planned |
+| 7 | Port of filters and tracker to C++ (library, unit tests, benchmarks) | Planned |
+| 8 | Evaluation on real trajectories (e.g. PX4 flight logs, public AIS data) | Planned |
+ 
+Each stage ends with a documented evaluation, not just working code. The goal is to show *how well* a tracker works and *why*, not only that it runs.
+
 ## Setup (Python)
 
 Requires Python 3.13 or newer.
