@@ -27,15 +27,11 @@ Clone the repository then navigate to the project directory, create a virtual en
 ```sh
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -e .
 ```
-
-`pip install -e .` installs the dependencies and makes the shared modules in `python/` (e.g. `helpers`) importable from every stage. Then run a stage from the `python/` directory, e.g.:
 
 ```sh
 cd python
-python main.py                  # single run with the scenario's seed
-python main.py --monte-carlo    # Monte Carlo evaluation over many seeds
+python main.py
 ```
 
 If you get `ModuleNotFoundError: No module named 'helpers'`, the virtual environment is not active or `pip install -e .` has not been run.
