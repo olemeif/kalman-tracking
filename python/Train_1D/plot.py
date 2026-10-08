@@ -52,3 +52,39 @@ def plot_all(t, s_true, s_measured, s_est, P_s, v_true, v_diff, v_est, P_v, sigm
     fig.suptitle("Stage 1: 1D train, constant velocity, position sensor only")
     fig.tight_layout()
     plt.show()
+
+def plot_monte_carlo(t, results, bounds, n_runs):
+    """
+    Monte Carlo evaluation, one curve per process noise value Q.
+    results: dict Q -> (rmse_t, sigma_t, anees_t), each averaged across runs per time step.
+    """
+    fig, (ax_s, ax_v, ax_a) = plt.subplots(1, 3, figsize=(16, 5), sharex=True)
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    for (Q, (rmse_t, sigma_t, anees_t)), color in zip(results.items(), colors):
+        for ax, i in ((ax_s, 0), (ax_v, 1)):
+            ax.plot(t, rmse_t[:, i], color=color, label=f"RMSE, Q = {Q:g}")
+            ax.plot(t, sigma_t[:, i], color=color, ls="--", label=f"Filter σ, Q = {Q:g}")
+        ax_a.plot(t, anees_t, color=color, label=f"Q = {Q:g}")
+
+    r1, r2 = bounds
+    ax_a.axhspan(r1, r2, color="gray", alpha=0.2, label=f"95% bounds [{r1:.2f}, {r2:.2f}]")
+    ax_a.axhline(2, color="black", lw=1, ls=":")
+
+    ax_s.set_ylabel("Position error (m)")
+    ax_s.set_title("Position: RMSE vs. filter σ")
+    ax_v.set_ylabel("Speed error (m/s)")
+    ax_v.set_title("Speed: RMSE vs. filter σ")
+    ax_a.set_ylabel("ANEES")
+    ax_a.set_title("ANEES ([1], Eq. 9.12)")
+    ax_a.set_ylim(0, 4)
+    for ax in (ax_s, ax_v):
+        ax.set_yscale("log")
+    for ax in (ax_s, ax_v, ax_a):
+        ax.set_xlabel("Time (s)")
+        ax.grid(alpha=0.3, which="both")
+        ax.legend()
+
+    fig.suptitle(f"Stage 1: Monte Carlo evaluation, {n_runs} runs")
+    fig.tight_layout()
+    plt.show()
