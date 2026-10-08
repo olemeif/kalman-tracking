@@ -4,7 +4,8 @@ def kalman_2nd_degree(
     s_measured: np.ndarray,
     dt_s: float,
     sigma_m: float,
-    n_steps: int
+    n_steps: int,
+    v_0: float
 ):
     """
     Kalman filter for a 2nd degree kinematic model (position, nearly constant speed) in 1D.
@@ -14,6 +15,7 @@ def kalman_2nd_degree(
         dt_s: Time step in seconds
         sigma_m: Standard deviation of the position measurement noise
         n_steps: Number of time steps
+        v_0: Initial velocity estimate (used for the initial prior)
     Returns:
         s_est: Estimated position (1D array of length n_steps)
         v_est: Estimated velocity (1D array of length n_steps)
@@ -35,8 +37,7 @@ def kalman_2nd_degree(
 
     # Initial prior for time k = 0. The filter must not use the ground truth.
     # Position: rough guess with a large variance, so the first measurement dominates.
-    # Velocity: deliberately wrong guess (true: 55.55 m/s) with matching uncertainty.
-    x_hat = np.array([[s_measured[0]], [40.0]])
+    x_hat = np.array([[s_measured[0]], [v_0]])
     P_hat = np.array([[100.0 ** 2, 0], [0, 20.0 ** 2]])
 
     # Storage for the corrected estimates x_tilde(k) and their variances

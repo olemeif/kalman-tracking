@@ -26,7 +26,7 @@ def main():
     n_steps, t, s_true, v_true = simulate_ground_truth(track_length_m, v_0, s_0, dt_s)
     s_measured, v_diff = generate_measurement(s_true, sigma_m, dt_s, n_steps, seed)
 
-    s_est, v_est, P_s, P_v, K_s, K_v = kalman_2nd_degree(s_measured, dt_s, sigma_m, n_steps)
+    s_est, v_est, P_s, P_v, K_s, K_v = kalman_2nd_degree(s_measured, dt_s, sigma_m, n_steps, 40.0)
 
     # RMSE Evaluation
     print(f"Position RMSE: measured = {rmse(s_measured - s_true):.2f} m, "
