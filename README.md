@@ -125,8 +125,10 @@ Averaged over the second half of the run ($t \geq 23$ s):
 
 The 46-step track is short, so neither filter reaches a true steady state; with $\text{Var}(z_v) = 0$, the covariance keeps shrinking until the end.
 
-### Next steps
+## Next steps
 
+- Create Test Cases
+- Implement 3rd Order Model
 - Scenario with real speed changes, to find a $\text{Var}(z_v)$ that is both responsive and consistent
 - Compare the three process noise methods
 - Effect of a too small $\hat{\mathbf{P}}_0$ on convergence
