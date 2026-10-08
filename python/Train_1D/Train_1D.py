@@ -2,17 +2,16 @@ import json
 from pathlib import Path
 import numpy as np
 
-from simulation import simulate_ground_truth, generate_measurement
-from kalman_2nd_degree import kalman_2nd_degree
-from plot import plot_all
+from Train_1D.simulation import simulate_ground_truth, generate_measurement
+from Train_1D.kalman_2nd_degree import kalman_2nd_degree
+from Train_1D.plot import plot_all
 from helpers import rmse
 
 
 ROOT = Path(__file__).resolve().parents[2]   # adjust to your folder depth
 scenario_path = ROOT / "scenarios" / "01_1D_Train.json"
 
-if __name__ == "__main__":
-
+def main():
     # Read scenario
     with open(scenario_path) as f:
         scenario = json.load(f)
