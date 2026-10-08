@@ -29,22 +29,34 @@ A train moves along a straight track of length $\ell$ at a constant speed $v_0$.
  
 ### Model
  
-$$
+```math
 \mathbf{x}(k) = \begin{bmatrix} s(k) \\ v(k) \end{bmatrix}, \qquad
 \mathbf{A}_d = \begin{bmatrix} 1 & T_s \\ 0 & 1 \end{bmatrix}, \qquad
 \mathbf{C} = \begin{bmatrix} 1 & 0 \end{bmatrix}, \qquad
 R = \sigma^2
-$$
+```
  
 ([1], Eq. 12.3, 12.4 and 1.18). Filter equations: [1], Eq. 12.24–12.28, in the order *correct with measurement k, then predict to k+1*.
  
 **Process noise.** [1], Sec. 12.2 gives three ways to discretize it. All three are implemented, written with $\text{Var}(z_v)$, the velocity change per step:
  
-| Method | $\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T$ | Reference |
-|---|---|---|
-| Direct discretization | $\begin{bmatrix} T_s^2 & T_s \\ T_s & 1 \end{bmatrix} \text{Var}(z_v)$ | [1], Eq. 12.11 |
-| Piecewise constant noise (used below) | $\begin{bmatrix} T_s^2/4 & T_s/2 \\ T_s/2 & 1 \end{bmatrix} \text{Var}(z_v)$ | [1], Eq. 12.17 |
-| Discretized continuous model | $\begin{bmatrix} T_s^2/3 & T_s/2 \\ T_s/2 & 1 \end{bmatrix} \text{Var}(z_v)$ | [1], Eq. 12.19 |
+**Method 1: direct discretization** ([1], Eq. 12.11)
+ 
+```math
+\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T = \begin{bmatrix} T_s^2 & T_s \\ T_s & 1 \end{bmatrix} \text{Var}(z_v)
+```
+ 
+**Method 2: piecewise constant noise** ([1], Eq. 12.17), used for the results below
+ 
+```math
+\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T = \begin{bmatrix} T_s^2/4 & T_s/2 \\ T_s/2 & 1 \end{bmatrix} \text{Var}(z_v)
+```
+ 
+**Method 3: discretized continuous model** ([1], Eq. 12.19)
+ 
+```math
+\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T = \begin{bmatrix} T_s^2/3 & T_s/2 \\ T_s/2 & 1 \end{bmatrix} \text{Var}(z_v)
+```
  
 ### Parameters
  
