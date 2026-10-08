@@ -1,0 +1,11 @@
+{
+  "filter": {
+    "Q": 0.01,
+    "v_0_prior": 40.0
+  },
+  "monte_carlo": {
+    "n_runs": 500,
+    "Q_values": [0.01, 0.0],
+    "confidence": 0.95
+  }
+}
