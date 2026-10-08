@@ -15,10 +15,12 @@ source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-`pip install -e .` installs the dependencies and makes the shared modules in `python/` (e.g. `helpers`) importable from every stage. Then run a stage, e.g.:
+`pip install -e .` installs the dependencies and makes the shared modules in `python/` (e.g. `helpers`) importable from every stage. Then run a stage from the `python/` directory, e.g.:
 
 ```sh
-python python/01_1D_Train/Train_1D.py
+cd python
+python main.py                  # single run with the scenario's seed
+python main.py --monte-carlo    # Monte Carlo evaluation over many seeds
 ```
 
 If you get `ModuleNotFoundError: No module named 'helpers'`, the virtual environment is not active or `pip install -e .` has not been run.
@@ -29,22 +31,34 @@ A train moves along a straight track of length $\ell$ at a constant speed $v_0$.
  
 ### Model
  
-$$
+```math
 \mathbf{x}(k) = \begin{bmatrix} s(k) \\ v(k) \end{bmatrix}, \qquad
 \mathbf{A}_d = \begin{bmatrix} 1 & T_s \\ 0 & 1 \end{bmatrix}, \qquad
 \mathbf{C} = \begin{bmatrix} 1 & 0 \end{bmatrix}, \qquad
 R = \sigma^2
-$$
+```
  
 ([1], Eq. 12.3, 12.4 and 1.18). Filter equations: [1], Eq. 12.24–12.28, in the order *correct with measurement k, then predict to k+1*.
  
 **Process noise.** [1], Sec. 12.2 gives three ways to discretize it. All three are implemented, written with $\text{Var}(z_v)$, the velocity change per step:
  
-| Method | $\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T$ | Reference |
-|---|---|---|
-| Direct discretization | $\begin{bmatrix} T_s^2 & T_s \\ T_s & 1 \end{bmatrix} \text{Var}(z_v)$ | [1], Eq. 12.11 |
-| Piecewise constant noise (used below) | $\begin{bmatrix} T_s^2/4 & T_s/2 \\ T_s/2 & 1 \end{bmatrix} \text{Var}(z_v)$ | [1], Eq. 12.17 |
-| Discretized continuous model | $\begin{bmatrix} T_s^2/3 & T_s/2 \\ T_s/2 & 1 \end{bmatrix} \text{Var}(z_v)$ | [1], Eq. 12.19 |
+**Method 1: direct discretization** ([1], Eq. 12.11)
+ 
+```math
+\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T = \begin{bmatrix} T_s^2 & T_s \\ T_s & 1 \end{bmatrix} \text{Var}(z_v)
+```
+ 
+**Method 2: piecewise constant noise** ([1], Eq. 12.17), used for the results below
+ 
+```math
+\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T = \begin{bmatrix} T_s^2/4 & T_s/2 \\ T_s/2 & 1 \end{bmatrix} \text{Var}(z_v)
+```
+ 
+**Method 3: discretized continuous model** ([1], Eq. 12.19)
+ 
+```math
+\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T = \begin{bmatrix} T_s^2/3 & T_s/2 \\ T_s/2 & 1 \end{bmatrix} \text{Var}(z_v)
+```
  
 ### Parameters
  
@@ -82,12 +96,39 @@ The speed baseline is the finite difference of consecutive position measurements
 - **Speed without a speed sensor.** Starting from 40 m/s (true: 55.55 m/s), the estimate converges within about 3 s. The overall speed RMSE is dominated by this start-up; after convergence the filter is about 25× more accurate than the finite difference.
 - **Position.** The filter roughly halves the position error. Its ±2σ band shrinks from the sensor's ±10 m to about ±4.3 m.
 
-These numbers come from one noise realization only. Whether the ±2σ bands are actually right (filter consistency) needs many runs; see next steps.
- 
+These numbers come from one noise realization only. Whether the ±2σ bands are actually right (filter consistency) needs many runs; see the Monte Carlo evaluation below.
+
+### Monte Carlo evaluation
+
+The same experiment is repeated $N = 500$ times with seeds $0, \dots, N-1$. Errors are averaged **across runs, not across time**, which gives one value per time step and shows how the filter converges.
+
+- **RMSE vs. filter σ.** The RMSE over all runs is compared with the filter's own claim, $\sqrt{\tilde{P}_{ii}}$. For a consistent filter, the two curves lie on top of each other.
+- **ANEES** ([1], Eq. 9.7 and 9.12). For each run and step, $\varepsilon(k) = \tilde{\boldsymbol{\varepsilon}}^T \tilde{\mathbf{P}}^{-1} \tilde{\boldsymbol{\varepsilon}}$ uses the full covariance, because position and speed errors are correlated. Averaged over $N$ runs, $N \cdot \bar{\varepsilon}$ follows a $\chi^2$ distribution with $N \cdot n$ degrees of freedom ($n = 2$ states). The 95% bounds are $[r_1, r_2] = [1.83,\ 2.18]$ ([1], Eq. 9.13). A consistent filter stays around $n = 2$, inside the bounds.
+
+Two process noise values are compared: the value from the single run, $\text{Var}(z_v) = 0.01$, and $\text{Var}(z_v) = 0$, which matches the simulation exactly (the speed never changes).
+
+![Monte Carlo evaluation of the 1D Kalman filter](docs/assets/images/01_1D_Train_MC.png)
+
+Averaged over the second half of the run ($t \geq 23$ s):
+
+| $\text{Var}(z_v)$ | Position RMSE / filter σ | Speed RMSE / filter σ | ANEES | Steps inside bounds |
+|---|---|---|---|---|
+| 0.01 (m/s)² | 1.88 m / 2.14 m | 0.157 m/s / 0.309 m/s | 1.03 | 15% |
+| 0 | 1.67 m / 1.68 m | 0.089 m/s / 0.090 m/s | 1.94 | 98% |
+
+**Observations**
+
+- **$\text{Var}(z_v) = 0.01$ is too pessimistic.** The filter allows for speed changes that never happen. Its σ levels off while the actual error keeps falling, so it claims about twice the actual speed error. The ANEES drops below the lower bound at about 9 s and ends near 1.0.
+- **$\text{Var}(z_v) = 0$ is consistent.** RMSE and σ coincide for both states, and the ANEES stays around 2 throughout. It is also the more accurate filter: the model matches the simulation, so every measurement keeps refining the speed.
+- **Start-up.** Both filters agree for the first ~10 s, where the large initial covariance $\hat{\mathbf{P}}_0$ dominates. At $k = 0$, the ANEES is about 1.5, because $\hat{\mathbf{P}}_0$ is deliberately generous.
+- **Why not use 0 in practice?** With $\text{Var}(z_v) = 0$, the gain goes to zero and the filter could never follow a real speed change. In practice, a small $\text{Var}(z_v) > 0$ is chosen, accepting a slightly conservative (but safe) filter. An *overconfident* filter, with the σ curve below the RMSE, would be the dangerous case.
+
+The 46-step track is short, so neither filter reaches a true steady state; with $\text{Var}(z_v) = 0$, the covariance keeps shrinking until the end.
+
 ### Next steps
- 
-- Monte Carlo runs over many seeds with RMSE and NEES/ANEES ([1], Ch. 9)
-- Compare the three process noise methods and different values of $\text{Var}(z_v)$, including 0
+
+- Scenario with real speed changes, to find a $\text{Var}(z_v)$ that is both responsive and consistent
+- Compare the three process noise methods
 - Effect of a too small $\hat{\mathbf{P}}_0$ on convergence
 
 ## Notation

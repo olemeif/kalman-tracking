@@ -5,7 +5,8 @@ def kalman_2nd_degree(
     dt_s: float,
     sigma_m: float,
     n_steps: int,
-    v_0: float
+    v_0: float,
+    Q: float
 ):
     """
     Kalman filter for a 2nd degree kinematic model (position, nearly constant speed) in 1D.
@@ -16,17 +17,14 @@ def kalman_2nd_degree(
         sigma_m: Standard deviation of the position measurement noise
         n_steps: Number of time steps
         v_0: Initial velocity estimate (used for the initial prior)
+        Q: Process noise Var(z_v) in (m/s)^2 per step
     Returns:
-        s_est: Estimated position (1D array of length n_steps)
-        v_est: Estimated velocity (1D array of length n_steps)
-        P_s: Estimated position variance (1D array of length n_steps)
-        P_v: Estimated velocity variance (1D array of length n_steps)
-        K_s: Kalman gain for position (1D array of length n_steps)
-        K_v: Kalman gain for velocity (1D array of length n_steps)
+        x_est: Corrected state estimates x_tilde(k) = [s, v] (array of shape (n_steps, 2))
+        P_est: Corrected covariances P_tilde(k), full 2x2 matrix (array of shape (n_steps, 2, 2))
+        K_est: Kalman gains [K_s, K_v] (array of shape (n_steps, 2))
     """
 
     R = sigma_m ** 2  # [1, Eq. 1.18]
-    Q = 0.01  # Var(z_v) in (m/s)^2 per step, eyeballed (no model of the train's acceleration)
 
     A_d = np.array([[1, dt_s], [0, 1]])     # [1, Eq. 12.4]
     C = np.array([[1, 0]])                  # [1, Eq. 12.3]
@@ -40,13 +38,11 @@ def kalman_2nd_degree(
     x_hat = np.array([[s_measured[0]], [v_0]])
     P_hat = np.array([[100.0 ** 2, 0], [0, 20.0 ** 2]])
 
-    # Storage for the corrected estimates x_tilde(k) and their variances
-    s_est = np.zeros(n_steps)   # state estimate vector
-    v_est = np.zeros(n_steps)   # velocity estimate vector
-    P_s = np.zeros(n_steps)     # Position covariance estimate vector
-    P_v = np.zeros(n_steps)     # Velocity covariance estimate vector
-    K_s = np.zeros(n_steps)     # Kalman gain, position component
-    K_v = np.zeros(n_steps)     # Kalman gain, velocity component
+    # Storage for the corrected estimates x_tilde(k), their covariances and the gains.
+    # The full covariance is kept, because NEES needs the off-diagonal elements.
+    x_est = np.zeros((n_steps, 2))
+    P_est = np.zeros((n_steps, 2, 2))
+    K_est = np.zeros((n_steps, 2))
 
     for k in range(n_steps):
         # Correction
@@ -55,15 +51,12 @@ def kalman_2nd_degree(
         P_tilde = (np.eye(2) - K @ C) @ P_hat                   # [1, Eq. 12.26]
 
         # Store the corrected estimate for time k
-        s_est[k] = x_tilde[0, 0]
-        v_est[k] = x_tilde[1, 0]
-        P_s[k] = P_tilde[0, 0]
-        P_v[k] = P_tilde[1, 1]
-        K_s[k] = K[0, 0]
-        K_v[k] = K[1, 0]
+        x_est[k] = x_tilde[:, 0]
+        P_est[k] = P_tilde
+        K_est[k] = K[:, 0]
 
         # Prediction for time k+1
         x_hat = A_d @ x_tilde                   # [1, Eq. 12.27]
         P_hat = A_d @ P_tilde @ A_d.T + GQG     # [1, Eq. 12.28]
 
-    return s_est, v_est, P_s, P_v, K_s, K_v
+    return x_est, P_est, K_est
