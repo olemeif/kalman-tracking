@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 from scipy.stats import chi2
 
-from Train_1D.simulation import simulate
+from simulation import simulate
 from Train_1D.kalman_2nd_degree import kalman_2nd_degree
 from Train_1D.plot import plot_monte_carlo
 from helpers import nees

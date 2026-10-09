@@ -1,0 +1,19 @@
+{
+  "track_length_m": 4000.0,
+  "sensors": {
+    "GPS": {
+      "dt_s": 1.0,
+      "sigma_m": 5.0
+    }
+  },
+  "train": {
+    "s_0": 0.0,
+    "v_0": 55.55,
+    "deceleration": {
+      "t_start_s": 30.0,
+      "duration_s": 10.0,
+      "v_end": 40.0
+    }
+  },
+  "seed": 31
+}

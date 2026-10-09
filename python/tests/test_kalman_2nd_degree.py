@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import chi2
 
 from Train_1D.kalman_2nd_degree import kalman_2nd_degree
-from Train_1D.simulation import simulate_ground_truth, generate_measurement
+from simulation import simulate_ground_truth, generate_measurement
 from helpers import nees
 
 
