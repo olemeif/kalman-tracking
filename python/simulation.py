@@ -4,6 +4,7 @@ def speed_profile(
     t: np.ndarray,
     v_0: float,
     s_0: float,
+    dt_s: float,
     deceleration: dict = None
 ):
     """
@@ -16,13 +17,15 @@ def speed_profile(
         t: np.ndarray, time vector
         v_0: float, initial velocity of the train in m/s
         s_0: float, initial position of the train in meters
+        dt_s: float, time step in seconds
         deceleration: dict with keys t_start_s, duration_s, v_end, or None for constant speed
     Returns:
         s: np.ndarray, position vector
         v: np.ndarray, velocity vector
+        a: np.ndarray, acceleration vector
     """
     if deceleration is None:
-        return s_0 + v_0 * t, np.full(t.shape, v_0)
+        return s_0 + v_0 * t, np.full(t.shape, v_0), np.zeros(t.shape)
 
     t_start = deceleration["t_start_s"]
     T = deceleration["duration_s"]
@@ -37,7 +40,11 @@ def speed_profile(
     lost = dv / 2 * (T * tau - T / np.pi * np.sin(np.pi * tau)) + dv * np.maximum(t - t_start - T, 0.0)
     s = s_0 + v_0 * t - lost
 
-    return s, v
+    a = np.zeros(t.shape)
+    braking = (t >= t_start) & (t <= t_start + T)
+    a[braking] = -dv / 2 * np.pi / T * np.sin(np.pi * tau[braking])
+
+    return s, v, a
 
 def simulate_ground_truth(
     track_length_m: float,
@@ -60,19 +67,20 @@ def simulate_ground_truth(
         t: np.ndarray, time vector
         s_true: np.ndarray, true position vector
         v_true: np.ndarray, true velocity vector
+        a_true: np.ndarray, true acceleration vector
     """
     # The speed never drops below v_min, so this many steps always covers the track
     v_min = v_0 if deceleration is None else min(v_0, deceleration["v_end"])
     n_max = int(track_length_m / (v_min * dt_s)) + 1
     t = np.arange(n_max) * dt_s
 
-    s_true, v_true = speed_profile(t, v_0, s_0, deceleration)
+    s_true, v_true, a_true = speed_profile(t, v_0, s_0, dt_s, deceleration)
 
     # Keep only the samples on the track
     n_steps = int(np.sum(s_true - s_0 <= track_length_m))
-    t, s_true, v_true = t[:n_steps], s_true[:n_steps], v_true[:n_steps]
+    t, s_true, v_true, a_true = t[:n_steps], s_true[:n_steps], v_true[:n_steps], a_true[:n_steps]
 
-    return n_steps, t, s_true, v_true
+    return n_steps, t, s_true, v_true, a_true
 
 def generate_measurement(
         s_true: np.ndarray,
@@ -113,13 +121,14 @@ def simulate(scenario: dict, seed: int = None):
         t: np.ndarray, time vector
         s_true: np.ndarray, true position vector
         v_true: np.ndarray, true velocity vector
+        a_true: np.ndarray, true acceleration vector
         s_measured: np.ndarray, measured position vector with noise
         v_diff: np.ndarray, estimated velocity vector using finite difference
     """
     dt_s = scenario["sensors"]["GPS"]["dt_s"]
     sigma_m = scenario["sensors"]["GPS"]["sigma_m"]
 
-    n_steps, t, s_true, v_true = simulate_ground_truth(
+    n_steps, t, s_true, v_true, a_true = simulate_ground_truth(
         scenario["track_length_m"],
         scenario["train"]["v_0"],
         scenario["train"]["s_0"],
@@ -127,4 +136,4 @@ def simulate(scenario: dict, seed: int = None):
         scenario["train"].get("deceleration"))
     s_measured, v_diff = generate_measurement(s_true, sigma_m, dt_s, n_steps, seed)
 
-    return t, s_true, v_true, s_measured, v_diff
+    return t, s_true, v_true, a_true, s_measured, v_diff
