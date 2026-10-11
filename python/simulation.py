@@ -120,7 +120,10 @@ def simulate(scenario: dict, seed: int = None):
     sigma_m = scenario["sensors"]["GPS"]["sigma_m"]
 
     n_steps, t, s_true, v_true = simulate_ground_truth(
-        scenario["track_length_m"], scenario["train"]["v_0"], scenario["train"]["s_0"], dt_s,
+        scenario["track_length_m"],
+        scenario["train"]["v_0"],
+        scenario["train"]["s_0"],
+        dt_s,
         scenario["train"].get("deceleration"))
     s_measured, v_diff = generate_measurement(s_true, sigma_m, dt_s, n_steps, seed)
 
