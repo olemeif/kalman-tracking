@@ -53,7 +53,7 @@ def test_anees_consistent_with_matched_model():
     # Truth has constant speed, so Q = 0 matches the true model and the filter must be
     # consistent: N * ANEES ~ chi2(N * n) [1, Eq. 9.13]
     n_runs, n_states, confidence = 200, 2, 0.99
-    n_steps, _, s_true, v_true = simulate_ground_truth(2500.0, V_TRUE, 0.0, DT_S)
+    n_steps, _, s_true, v_true, _ = simulate_ground_truth(2500.0, V_TRUE, 0.0, DT_S)
     x_true = np.column_stack([s_true, v_true])
 
     nees_k = np.zeros((n_runs, n_steps))

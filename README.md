@@ -34,8 +34,20 @@ source .venv/bin/activate      # Windows: .venv\Scripts\activate
 
 ```sh
 cd python
-python main.py
+python main.py <scenario> [mode]
 ```
+
+| Scenario | Content |
+| -------- | ------- |
+| `train` | Stage 1: constant speed, 2nd-order filter |
+| `decel` | Stage 2: braking train, 3rd-order filter |
+
+| Mode | Content |
+| ---- | ------- |
+| `run` (default) | one noise realization (seed from the scenario file) with plots |
+| `mc` | Monte Carlo evaluation: RMSE, filter σ and ANEES |
+
+For example `python main.py decel mc`. `python main.py --all` runs every scenario in both modes.
 
 If you get `ModuleNotFoundError: No module named 'helpers'`, the virtual environment is not active or `pip install -e .` has not been run.
 
