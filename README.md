@@ -11,7 +11,7 @@ The filters are developed in Python first and then ported to C++. Python remains
 | Stage | Content | Status |
 | ----- | ------- | ------ |
 | 1 | 1D Kalman filter (constant velocity), Monte Carlo consistency evaluation (RMSE vs. filter σ, ANEES) | **Done** |
-| 2 | 3rd-order model, Test cases, process noise comparison, scenario with real speed changes | In progress |
+| 2 | Braking scenario, 3rd-order model, process noise trade-off; next: performance ceiling, Doppler measurement, IMM | In progress |
 | 3 | 2D tracking of a single target, linear Kalman filter with position measurements | Planned |
 | 4 | Radar measurements (range, bearing): Extended Kalman filter | Planned |
 | 5 | Multi-target tracking: clutter, missed detections, gating, data association, track management | Planned |
@@ -151,13 +151,77 @@ Averaged over the second half of the run ($t \geq 23$ s):
 
 The 46-step track is short, so neither filter reaches a true steady state; with $\text{Var}(z_v) = 0$, the covariance keeps shrinking until the end.
 
+## Stage 2: Braking train, 3rd-order model
+
+The train from Stage 1 now brakes from 55.55 m/s to 40 m/s. The constant-velocity model cannot follow this: with any fixed $\text{Var}(z_v)$, it is either overconfident during braking or too pessimistic at constant speed. A 3rd-order kinematic model ([1], Sec. 12.3) adds the acceleration to the state, so the filter can estimate the deceleration itself, still from position measurements only.
+
+### Scenario
+
+The speed follows a raised cosine, so the acceleration is continuous:
+
+```math
+v(t) = v_0 - \frac{\Delta v}{2}\left(1 - \cos(\pi\tau)\right), \qquad
+a(t) = -\frac{\Delta v}{2} \cdot \frac{\pi}{T} \sin(\pi\tau), \qquad
+\tau = \frac{t - t_{\text{start}}}{T} \in [0, 1]
+```
+
+| Scenario | Value |
+|---|---|
+| Track length $\ell$ | 4,000 m |
+| Speed | 55.55 m/s → 40 m/s ($\Delta v$ = 15.55 m/s) |
+| Braking start $t_{\text{start}}$, duration $T$ | 30 s, 10 s |
+| Deceleration, mean / peak | 1.55 m/s² / 2.44 m/s² ($a_{\max} = \pi \Delta v / 2T$) |
+| Max. rate of change of deceleration | 0.77 m/s³ ($\pi^2 \Delta v / 2T^2$) |
+| Sampling time $T_s$, measurement noise $\sigma$ | 1.0 s, 5.0 m |
+
+### Model
+
+```math
+\mathbf{x}(k) = \begin{bmatrix} s(k) \\ v(k) \\ a(k) \end{bmatrix}, \qquad
+\mathbf{A}_d = \begin{bmatrix} 1 & T_s & T_s^2/2 \\ 0 & 1 & T_s \\ 0 & 0 & 1 \end{bmatrix}, \qquad
+\mathbf{C} = \begin{bmatrix} 1 & 0 & 0 \end{bmatrix}
+```
+
+([1], Eq. 12.29). Process noise with method 1, direct discretization ([1], Sec. 12.3, p. 138):
+
+```math
+\mathbf{G}_d \mathbf{Q} \mathbf{G}_d^T = \begin{bmatrix} T_s^4/4 & T_s^3/2 & T_s^2/2 \\ T_s^3/2 & T_s^2 & T_s \\ T_s^2/2 & T_s & 1 \end{bmatrix} \text{Var}(z_a)
+```
+
+$\text{Var}(z_a)$ is now the change in **acceleration** per step, in (m/s²)², so the values from Stage 1 do not carry over.
+
+| Filter | Value |
+|---|---|
+| Measurement noise $R$ | $\sigma^2$ = 25 m² |
+| Process noise $\text{Var}(z_a)$ | 0.1, 0.5 and 2 (m/s²)², compared |
+| Initial state $\hat{\mathbf{x}}_0$ | $[s_{\text{meas}}(0),\ 40\ \text{m/s},\ 0\ \text{m/s}^2]^T$ |
+| Initial covariance $\hat{\mathbf{P}}_0$ | $\text{diag}(100^2\ \text{m}^2,\ 20^2\ (\text{m/s})^2,\ 10^2\ (\text{m/s}^2)^2)$ |
+
+### Monte Carlo evaluation
+
+![Monte Carlo evaluation of the 3rd-order filter on the braking scenario](docs/assets/images/02_1D_Train_decel_MC.png)
+
+$N = 500$ runs. With $n = 3$ states, a consistent filter has an ANEES around 3; the 95% bounds are $[2.79,\ 3.22]$. Errors after start-up ($k \geq 10$), braking phase included:
+
+| Filter | Position RMSE (m) | Speed RMSE (m/s) | Acceleration RMSE (m/s²) | ANEES max | ANEES median |
+|---|---|---|---|---|---|
+| Raw sensor / finite difference | 4.98 | 7.04 | – | – | – |
+| 3rd order, $\text{Var}(z_a)$ = 0.1 | 3.72 | 2.01 | 0.70 | 25.41 | 1.69 |
+| 3rd order, $\text{Var}(z_a)$ = 0.5 | 3.86 | 2.26 | 0.79 | 6.24 | 1.69 |
+| 3rd order, $\text{Var}(z_a)$ = 2 | 4.09 | 2.89 | 1.09 | 2.64 | 1.73 |
+
+**Observations**
+
+- **The same trade-off as in Stage 1, one level up.** $\text{Var}(z_a)$ = 0.1 is the most accurate at constant speed but overconfident during braking (ANEES up to 25). $\text{Var}(z_a)$ = 2 stays inside the upper bound throughout, but is noisier everywhere. No fixed value is right for both phases.
+- **The filter lags, then overshoots.** For $\text{Var}(z_a)$ = 0.1, the position error peaks at about 5 m twice: around t = 36 s, just after the strongest deceleration, and around t = 45 s, after braking has ended. The model assumes a nearly constant acceleration, so its acceleration estimate trails the truth by several seconds: first it brakes too little, then it keeps braking after the train has stopped decelerating.
+- **Conservative at constant speed.** The ANEES median is about 1.7 for all three values, below the lower bound of 2.79. Any $\text{Var}(z_a) > 0$ lets the filter expect accelerations that do not happen while the speed is constant.
+- **The price of a more flexible model.** At constant speed, the position error is about 3.4–4 m, compared with about 1.7–1.9 m for the constant-velocity filter in Stage 1. Estimating a third state that is mostly zero costs accuracy.
+- **The limit is the information, not the tuning.** With ±5 m position measurements at 1 Hz, the data holds little information about a maneuver this fast. A better motion model alone cannot create it; an additional measured quantity can (see next steps).
+
 ## Next steps
 
-- Create Test Cases
-- Implement 3rd Order Model
-- Scenario with real speed changes, to find a $\text{Var}(z_v)$ that is both responsive and consistent
-- Compare the three process noise methods
-- Effect of a too small $\hat{\mathbf{P}}_0$ on convergence
+- [ ] **Doppler measurement:** Add a measured speed, as a radar's radial velocity would provide: $\mathbf{C}$ gets a second row $[0,\ 1,\ 0]$, and $\mathbf{R} = \text{diag}(\sigma_s^2, \sigma_v^2)$. Expected: the filter follows the braking faster and stays consistent.
+- [ ] Compare the three process noise methods on the braking scenario.
 
 ## Notation
  
@@ -165,7 +229,7 @@ This project follows the notation of [1]:
  
 | Symbol | Meaning |
 |---|---|
-| $s$, $v$ | position, velocity |
+| $s$, $v$, $a$ | position, velocity, acceleration |
 | $\mathbf{A}_d$, $\mathbf{B}_d$ | discrete system and input matrix |
 | $\mathbf{C}$ | measurement matrix (often $\mathbf{H}$ in English literature) |
 | $y$ | measurement |
