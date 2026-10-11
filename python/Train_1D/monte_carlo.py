@@ -1,12 +1,11 @@
 import json
 from pathlib import Path
 import numpy as np
-from scipy.stats import chi2
 
-from Train_1D.simulation import simulate
+from simulation import simulate
 from Train_1D.kalman_2nd_degree import kalman_2nd_degree
 from Train_1D.plot import plot_monte_carlo
-from helpers import nees
+from helpers import nees, anees_bounds
 
 
 ROOT = Path(__file__).resolve().parents[2]   # adjust to your folder depth
@@ -38,22 +37,12 @@ def run_monte_carlo(scenario: dict, v_0_prior: float, Q: float, n_runs: int):
     P_est = np.zeros((n_runs, n_steps, N_STATES, N_STATES))
 
     for i in range(n_runs):
-        _, s_true, v_true, s_measured, _ = simulate(scenario, seed=i)
+        _, s_true, v_true, _, s_measured, _ = simulate(scenario, seed=i)
         x_est, P_est[i], _ = kalman_2nd_degree(s_measured, dt_s, sigma_m, n_steps, v_0_prior, Q)
         err[i] = x_est - np.column_stack([s_true, v_true])
 
     nees_k = nees(err, P_est)   # [1, Eq. 9.7]
     return t, err, P_est, nees_k
-
-def anees_bounds(n_runs: int, n_states: int, confidence: float):
-    """
-    Confidence interval for ANEES. N * ANEES is chi-squared with N * n degrees of freedom.
-    [1, Eq. 9.13]
-    """
-    alpha = 1 - confidence
-    r1 = chi2.ppf(alpha / 2, n_runs * n_states) / n_runs
-    r2 = chi2.ppf(1 - alpha / 2, n_runs * n_states) / n_runs
-    return r1, r2
 
 def main():
     with open(scenario_path) as f:
@@ -73,7 +62,7 @@ def main():
         # Average across runs (axis 0), not across time: one value per time step
         rmse_t = np.sqrt(np.mean(err ** 2, axis=0))                                # (n_steps, 2)
         sigma_t = np.sqrt(np.mean(np.diagonal(P_est, axis1=2, axis2=3), axis=0))   # (n_steps, 2)
-        anees_t = np.mean(nees_k, axis=0)   # [1, Eq. 9.12]                         (n_steps,)
+        anees_t = np.mean(nees_k, axis=0)   # [1, Eq. 9.12]                          (n_steps,)
         results[Q] = (rmse_t, sigma_t, anees_t)
 
         # Steady state: second half of the run, after the start-up transient

@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import numpy as np
 
-from Train_1D.simulation import simulate
+from simulation import simulate
 from Train_1D.kalman_2nd_degree import kalman_2nd_degree
 from Train_1D.plot import plot_all
 from helpers import rmse
@@ -24,7 +24,7 @@ def main():
     v_0 = scenario["train"]["v_0"]
     seed = scenario.get("seed", None)
 
-    t, s_true, v_true, s_measured, v_diff = simulate(scenario, seed)
+    t, s_true, v_true, a_true, s_measured, v_diff = simulate(scenario, seed)
     gps_noise = s_measured - s_true
     print(f"Noise: mean = {np.mean(gps_noise):.4f} m, std = {np.std(gps_noise):.4f} m")
 
