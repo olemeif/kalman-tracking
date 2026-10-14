@@ -218,10 +218,13 @@ $N = 500$ runs. With $n = 3$ states, a consistent filter has an ANEES around 3; 
 - **The price of a more flexible model.** At constant speed, the position error is about 3.4–4 m, compared with about 1.7–1.9 m for the constant-velocity filter in Stage 1. Estimating a third state that is mostly zero costs accuracy.
 - **The limit is the information, not the tuning.** With ±5 m position measurements at 1 Hz, the data holds little information about a maneuver this fast. A better motion model alone cannot create it; an additional measured quantity can (see next steps).
 
-## Next steps
+### Increasing the accuracy (ROSE, IMM)
 
-- [ ] **Doppler measurement:** Add a measured speed, as a radar's radial velocity would provide: $\mathbf{C}$ gets a second row $[0,\ 1,\ 0]$, and $\mathbf{R} = \text{diag}(\sigma_s^2, \sigma_v^2)$. Expected: the filter follows the braking faster and stays consistent.
-- [ ] Compare the three process noise methods on the braking scenario.
+To increase the accuracy, the algorithm can be extended to either a **ROSE** (Rapid Ongoing Stochastic covariance Estemation filter, [1], Sec. 6) or an **IMM** (Interacting Multiple Model Algorithm, [2]).
+
+#### ROSE
+
+
 
 ## Notation
  
@@ -243,3 +246,5 @@ This project follows the notation of [1]:
 ## References
  
 [1] R. Marchthaler, S. Dingler: *Kalman-Filter. Einführung in die Zustandsschätzung und ihre Anwendung für eingebettete Systeme*, 2nd ed., Springer Vieweg, 2024. https://doi.org/10.1007/978-3-658-43216-4
+
+[2] A. F. Genovese: **The Interacting Multiple Model Algorithm for Accurate State Estimation of Maneuvering Targets**, Johns Hopkins APL Technical Digest, Volume 22, Number 4, 2001.

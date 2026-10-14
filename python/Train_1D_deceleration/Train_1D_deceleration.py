@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 
 from simulation import simulate
-from Train_1D_deceleration.kalman_3rd_degree import kalman_3rd_degree
+from Train_1D_deceleration.kalman_3rd_degree import rose_filter
 from Train_1D_deceleration.plot import plot_all
 from helpers import rmse
 
@@ -24,12 +24,14 @@ def main():
 
     t, s_true, v_true, a_true, s_measured, v_diff = simulate(scenario, seed)
 
-    x_est, P_est, K_est = kalman_3rd_degree(
+    x_est, P_est, K_est, Q_est = rose_filter(
         s_measured=s_measured,
         dt_s=dt_s,
         sigma_m=sigma_m,
         v_0=config["filter"]["v_0_prior"],
-        Q=config["filter"]["Q"]
+        Q_min=config["filter"]["Q_min"],
+        Q_max=config["filter"]["Q_max"],
+        alpha_M=config["filter"]["alpha_M"]
     )
     s_est, v_est, a_est = x_est[:, 0], x_est[:, 1], x_est[:, 2]
     P_s, P_v, P_a = P_est[:, 0, 0], P_est[:, 1, 1], P_est[:, 2, 2]
