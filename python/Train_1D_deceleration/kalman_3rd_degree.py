@@ -1,6 +1,38 @@
 import numpy as np
 from math import sqrt
 
+from kalman_common import allocate_storage, kalman_filter
+
+def system_matrices(dt_s: float):
+    """
+    System description of the 3rd degree kinematic model, only the position is measured.
+    """
+    A_d = np.array([[1, dt_s, 0.5*dt_s**2], [0, 1, dt_s], [0, 0, 1]])     # [1, Eq. 12.29]
+    C = np.array([[1, 0, 0]])                                             # y(k) = s(k)
+    return A_d, C
+
+def process_noise_GG(dt_s: float):
+    """
+    G_d * G_d^T for Q = 1, so that Q*(k) = G_d * Q(k) * G_d^T = GG * Q(k) [1, Eq. 12.10].
+    """
+    GG = np.array([[1/4*dt_s**4, 1/2*dt_s**3, 1/2*dt_s**2],
+                   [1/2*dt_s**3, dt_s**2,     dt_s],
+                   [1/2*dt_s**2, dt_s,        1]])  # method 1: direct discretization, [1, p. 138]
+    # Method 2, [1, Section 12.3] (swap in for the active GG):
+    # GG = np.array([[1/36*dt_s**4, 1/12*dt_s**3, 1/6*dt_s**2], [1/12*dt_s**3, 1/4*dt_s**2, 1/2*dt_s], [1/6*dt_s**2, 1/2*dt_s, 1]])
+    # Method 3, [1, Section 12.3]:
+    # GG = np.array([[1/20*dt_s**4, 1/8*dt_s**3, 1/6*dt_s**2], [1/8*dt_s**3, 1/3*dt_s**2, 1/2*dt_s], [1/6*dt_s**2, 1/2*dt_s, 1]])
+    return GG
+
+def initial_prior(s_measured: np.ndarray, v_0: float):
+    """
+    Initial prior for time k = 0. The filter must not use the ground truth.
+    Position: rough guess with a large variance, so the first measurement dominates.
+    """
+    x_hat = np.array([[s_measured[0]], [v_0], [0.0]])
+    P_hat = np.array([[100.0 ** 2, 0, 0], [0, 20.0 ** 2, 0], [0, 0, 10.0 ** 2]])
+    return x_hat, P_hat
+
 def kalman_3rd_degree(
     s_measured: np.ndarray,
     dt_s: float,
@@ -25,44 +57,11 @@ def kalman_3rd_degree(
     n_steps = len(s_measured)
     R = sigma_m ** 2  # [1, Eq. 1.18]
 
-    A_d = np.array([[1, dt_s, 0.5*dt_s**2], [0, 1, dt_s], [0, 0, 1]])     # [1, Eq. 12.29]
-    C = np.array([[1, 0, 0]])
+    A_d, C = system_matrices(dt_s)
+    GQG = process_noise_GG(dt_s) * Q
+    x_hat, P_hat = initial_prior(s_measured, v_0)
 
-    GQG = np.array([[1/4*dt_s**4, 1/2*dt_s**3, 1/2*dt_s**2],
-                    [1/2*dt_s**3, dt_s**2,     dt_s],
-                    [1/2*dt_s**2, dt_s,        1]]) * Q  # method 1: direct discretization, [1, p. 138]
-    # Method 2, [1, Section 12.3] (swap in for the active GQG):
-    # GQG = np.array([[1/36*dt_s**4, 1/12*dt_s**3, 1/6*dt_s**2], [1/12*dt_s**3, 1/4*dt_s**2, 1/2*dt_s], [1/6*dt_s**2, 1/2*dt_s, 1]])
-    # Method 3, [1, Section 12.3]:
-    # GQG = np.array([[1/20*dt_s**4, 1/8*dt_s**3, 1/6*dt_s**2], [1/8*dt_s**3, 1/3*dt_s**2, 1/2*dt_s], [1/6*dt_s**2, 1/2*dt_s, 1]])
-
-    # Initial prior for time k = 0. The filter must not use the ground truth.
-    # Position: rough guess with a large variance, so the first measurement dominates.
-    x_hat = np.array([[s_measured[0]], [v_0], [0.0]])
-    P_hat = np.array([[100.0 ** 2, 0, 0], [0, 20.0 ** 2, 0], [0, 0, 10.0 ** 2]])
-
-    # Storage for the corrected estimates x_tilde(k), their covariances and the gains.
-    # The full covariance is kept, because NEES needs the off-diagonal elements.
-    x_est = np.zeros((n_steps, 3))
-    P_est = np.zeros((n_steps, 3, 3))
-    K_est = np.zeros((n_steps, 3))
-
-    for k in range(n_steps):
-        # Correction
-        K = P_hat @ C.T @ np.linalg.inv(C @ P_hat @ C.T + R)    # [1, Eq. 12.38]
-        x_tilde = x_hat + K @ (s_measured[k] - C @ x_hat)       # [1, Eq. 12.39]
-        P_tilde = (np.eye(3) - K @ C) @ P_hat                   # [1, Eq. 12.40]
-
-        # Store the corrected estimate for time k
-        x_est[k] = x_tilde[:, 0]
-        P_est[k] = P_tilde
-        K_est[k] = K[:, 0]
-
-        # Prediction for time k+1
-        x_hat = A_d @ x_tilde                   # [1, Eq. 12.41]
-        P_hat = A_d @ P_tilde @ A_d.T + GQG     # [1, Eq. 12.42]
-
-    return x_est, P_est, K_est
+    return kalman_filter(s_measured, n_steps, A_d, C, R, GQG, x_hat, P_hat)
 
 def rose_filter(
     s_measured: np.ndarray,
@@ -99,31 +98,20 @@ def rose_filter(
     n_steps = len(s_measured)
     R = sigma_m ** 2  # [1, Eq. 1.18], known and constant
 
-    # System description, only the position is measured
-    A_d = np.array([[1, dt_s, 0.5*dt_s**2], [0, 1, dt_s], [0, 0, 1]])     # [1, Eq. 12.29]
-    C = np.array([[1, 0, 0]])                                             # y(k) = s(k)
- 
-    # G_d * G_d^T for Q = 1, method 1: direct discretization, [1, p. 138]
-    # Q*(k) = G_d * Q(k) * G_d^T = GG * Q(k)                  [1, Eq. 12.10]
-    GG = np.array([[1/4*dt_s**4, 1/2*dt_s**3, 1/2*dt_s**2],
-                   [1/2*dt_s**3, dt_s**2,     dt_s],
-                   [1/2*dt_s**2, dt_s,        1]])
+    A_d, C = system_matrices(dt_s)
+    GG = process_noise_GG(dt_s)
     # Coefficient of Q in the measured element C*Q*(k)*C^T = dt_s^4/4 * Q, used for the
     # comparison of coefficients in [1, Eq. 6.17], see [1, Section 6.3]
     CGGC = (C @ GG @ C.T).item()
  
-    # Initial prior for time k = 0. The filter must not use the ground truth.
-    x_hat = np.array([[s_measured[0]], [v_0], [0.0]])
-    P_hat = np.array([[100.0 ** 2, 0, 0], [0, 20.0 ** 2, 0], [0, 0, 10.0 ** 2]])
- 
+    x_hat, P_hat = initial_prior(s_measured, v_0)
+
     # Averaged innovation covariance M(k) = E(dy * dy^T) [1, Eq. 6.16], initialized small as in
     # [1, Section 11.4] (M = 0) and [1, Section 16.2] (M = C*P_tilde*C^T). Starting with R means
     # "no process noise yet". The large prior C*P_hat*C^T + R would hold Q at Q_max for a long time.
     M = R
  
-    x_est = np.zeros((n_steps, 3))
-    P_est = np.zeros((n_steps, 3, 3))
-    K_est = np.zeros((n_steps, 3))
+    x_est, P_est, K_est = allocate_storage(n_steps, 3)
     Q_est = np.full(n_steps, np.nan)
  
     x_tilde = None

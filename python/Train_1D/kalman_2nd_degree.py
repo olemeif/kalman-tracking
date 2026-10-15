@@ -1,5 +1,7 @@
 import numpy as np
 
+from kalman_common import kalman_filter
+
 def kalman_2nd_degree(
     s_measured: np.ndarray,
     dt_s: float,
@@ -38,25 +40,4 @@ def kalman_2nd_degree(
     x_hat = np.array([[s_measured[0]], [v_0]])
     P_hat = np.array([[100.0 ** 2, 0], [0, 20.0 ** 2]])
 
-    # Storage for the corrected estimates x_tilde(k), their covariances and the gains.
-    # The full covariance is kept, because NEES needs the off-diagonal elements.
-    x_est = np.zeros((n_steps, 2))
-    P_est = np.zeros((n_steps, 2, 2))
-    K_est = np.zeros((n_steps, 2))
-
-    for k in range(n_steps):
-        # Correction
-        K = P_hat @ C.T @ np.linalg.inv(C @ P_hat @ C.T + R)    # [1, Eq. 12.24]
-        x_tilde = x_hat + K @ (s_measured[k] - C @ x_hat)       # [1, Eq. 12.25]
-        P_tilde = (np.eye(2) - K @ C) @ P_hat                   # [1, Eq. 12.26]
-
-        # Store the corrected estimate for time k
-        x_est[k] = x_tilde[:, 0]
-        P_est[k] = P_tilde
-        K_est[k] = K[:, 0]
-
-        # Prediction for time k+1
-        x_hat = A_d @ x_tilde                   # [1, Eq. 12.27]
-        P_hat = A_d @ P_tilde @ A_d.T + GQG     # [1, Eq. 12.28]
-
-    return x_est, P_est, K_est
+    return kalman_filter(s_measured, n_steps, A_d, C, R, GQG, x_hat, P_hat)
