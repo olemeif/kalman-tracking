@@ -1,14 +1,8 @@
 import numpy as np
-from scipy.stats import chi2
 
 from Train_1D.kalman_2nd_degree import kalman_2nd_degree
-from simulation import simulate_ground_truth, generate_measurement
-from helpers import nees
-
-
-DT_S = 1.0
-SIGMA_M = 5.0
-V_TRUE = 55.55
+from simulation import simulate_ground_truth
+from tests.filter_checks import DT_S, SIGMA_M, V_TRUE, assert_anees_consistent
 
 
 def ground_truth(n_steps, v=V_TRUE, s_0=0.0):
@@ -56,16 +50,7 @@ def test_anees_consistent_with_matched_model():
     n_steps, _, s_true, v_true, _ = simulate_ground_truth(2500.0, V_TRUE, 0.0, DT_S)
     x_true = np.column_stack([s_true, v_true])
 
-    nees_k = np.zeros((n_runs, n_steps))
-    for i in range(n_runs):
-        s_measured, _ = generate_measurement(s_true, SIGMA_M, DT_S, n_steps, seed=i)
-        x_est, P_est, _ = kalman_2nd_degree(s_measured, DT_S, SIGMA_M, n_steps, 40.0, 0.0)
-        nees_k[i] = nees(x_est - x_true, P_est)
-
-    anees_t = np.mean(nees_k, axis=0)
-    alpha = 1 - confidence
-    r1 = chi2.ppf(alpha / 2, n_runs * n_states) / n_runs
-    r2 = chi2.ppf(1 - alpha / 2, n_runs * n_states) / n_runs
-
-    ss = slice(n_steps // 2, None)
-    assert r1 <= np.mean(anees_t[ss]) <= r2
+    assert_anees_consistent(
+        lambda s_measured: kalman_2nd_degree(s_measured, DT_S, SIGMA_M, n_steps, 40.0, 0.0),
+        s_true, x_true, n_steps, n_runs, n_states, confidence
+    )

@@ -1,14 +1,8 @@
 import numpy as np
 
 from Train_1D_deceleration.kalman_3rd_degree import kalman_3rd_degree
-from simulation import simulate_ground_truth, generate_measurement
-from helpers import nees, anees_bounds
-
-
-DT_S = 1.0
-SIGMA_M = 5.0
-V_TRUE = 55.55
-DECELERATION = {"t_start_s": 30.0, "duration_s": 10.0, "v_end": 40.0}
+from simulation import simulate_ground_truth
+from tests.filter_checks import DT_S, SIGMA_M, V_TRUE, DECELERATION, assert_anees_consistent
 
 
 def test_first_step_matches_hand_computation():
@@ -46,12 +40,7 @@ def test_anees_consistent_with_matched_model():
     n_steps, _, s_true, v_true, a_true = simulate_ground_truth(2500.0, V_TRUE, 0.0, DT_S)
     x_true = np.column_stack([s_true, v_true, a_true])
 
-    nees_k = np.zeros((n_runs, n_steps))
-    for i in range(n_runs):
-        s_measured, _ = generate_measurement(s_true, SIGMA_M, DT_S, n_steps, seed=i)
-        x_est, P_est, _ = kalman_3rd_degree(s_measured, DT_S, SIGMA_M, 40.0, 0.0)
-        nees_k[i] = nees(x_est - x_true, P_est)
-
-    r1, r2 = anees_bounds(n_runs, n_states, 0.99)
-    ss = slice(n_steps // 2, None)
-    assert r1 <= np.mean(np.mean(nees_k, axis=0)[ss]) <= r2
+    assert_anees_consistent(
+        lambda s_measured: kalman_3rd_degree(s_measured, DT_S, SIGMA_M, 40.0, 0.0),
+        s_true, x_true, n_steps, n_runs, n_states, 0.99
+    )
