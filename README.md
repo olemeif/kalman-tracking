@@ -11,13 +11,14 @@ The filters are developed in Python first and then ported to C++. Python remains
 | Stage | Content | Status |
 | ----- | ------- | ------ |
 | 1 | 1D Kalman filter (constant velocity), Monte Carlo consistency evaluation (RMSE vs. filter σ, ANEES) | **Done** |
-| 2 | Braking scenario, 3rd-order model, process noise trade-off; next: performance ceiling, Doppler measurement, IMM | In progress |
-| 3 | 2D tracking of a single target, linear Kalman filter with position measurements | Planned |
+| 2 | Braking scenario, 3rd-order model, ROSE filter. | **Done** |
+| 3 | 2D tracking of a single target, constant velocity, changing direction | **In progress** |
 | 4 | Radar measurements (range, bearing): Extended Kalman filter | Planned |
-| 5 | Multi-target tracking: clutter, missed detections, gating, data association, track management | Planned |
-| 6 | Validation: scenario library and metrics (RMSE, NEES, track continuity, ID switches, false tracks) | Planned |
-| 7 | Port of filters and tracker to C++ (library, unit tests, benchmarks) | Planned |
-| 8 | Evaluation on real trajectories (e.g. PX4 flight logs, public AIS data) | Planned |
+| 5 | Changing speed, finding a good model for a maneuvering target (ROSE, IMM) | Planned |
+| 6 | Multi-target tracking: clutter, missed detections, gating, data association, track management | Planned |
+| 7 | Validation: scenario library and metrics (RMSE, NEES, track continuity, ID switches, false tracks) | Planned |
+| 8 | Port of filters and tracker to C++ (library, unit tests, benchmarks) | Planned |
+| 9 | Evaluation on real trajectories (e.g. PX4 flight logs, public AIS data) | Planned |
  
 Each stage ends with a documented evaluation, not just working code. The goal is to show *how well* a tracker works and *why*, not only that it runs.
 
@@ -218,10 +219,29 @@ $N = 500$ runs. With $n = 3$ states, a consistent filter has an ANEES around 3; 
 - **The price of a more flexible model.** At constant speed, the position error is about 3.4–4 m, compared with about 1.7–1.9 m for the constant-velocity filter in Stage 1. Estimating a third state that is mostly zero costs accuracy.
 - **The limit is the information, not the tuning.** With ±5 m position measurements at 1 Hz, the data holds little information about a maneuver this fast. A better motion model alone cannot create it; an additional measured quantity can (see next steps).
 
-## Next steps
+### Increasing the accuracy (ROSE, IMM)
 
-- [ ] **Doppler measurement:** Add a measured speed, as a radar's radial velocity would provide: $\mathbf{C}$ gets a second row $[0,\ 1,\ 0]$, and $\mathbf{R} = \text{diag}(\sigma_s^2, \sigma_v^2)$. Expected: the filter follows the braking faster and stays consistent.
-- [ ] Compare the three process noise methods on the braking scenario.
+To increase the accuracy, the algorithm can be extended to either a **ROSE** (Rapid Ongoing Stochastic covariance Estemation filter, [1], Sec. 6) or an **IMM** (Interacting Multiple Model Algorithm, [2]).
+
+#### ROSE
+
+> [!NOTE]
+> The ROSE explanation is still missing in this document. I will do it another time.
+
+![Position error of the measurement, the Kalman filter and the ROSE filter on the braking scenario](docs/assets/images/02_1D_Train_decel_ROSE.png)
+
+Position error over a single run (seed 31), raw measurement, Kalman filter with $\text{Var}(z_a)$ = 0.5 and ROSE on the same measurements:
+
+| | Measured | Kalman, $\text{Var}(z_a)$ = 0.5 | ROSE |
+|---|---|---|---|
+| Position RMSE, all steps | 4.42 m | 3.71 m | 3.47 m |
+
+The effect of the filter is small when the train is changing speed.
+This could be improved by also adding a speed measurement (Doppler GNSS), but for this example that would be too much information. The goal is to show how the filter behaves with only position measurements.
+
+Another option is to use an **IMM** with two models: one for constant speed and one for braking. The IMM can switch between the two models based on the measurements, potentially improving accuracy during maneuvers.
+
+This will be skipped for now. First a tracker for a 2D scenario with changing direction will be implemented, which is more interesting than a 1D scenario with only one maneuver. Later, with changing speed, I may come back to this problem. 
 
 ## Notation
  
@@ -243,3 +263,5 @@ This project follows the notation of [1]:
 ## References
  
 [1] R. Marchthaler, S. Dingler: *Kalman-Filter. Einführung in die Zustandsschätzung und ihre Anwendung für eingebettete Systeme*, 2nd ed., Springer Vieweg, 2024. https://doi.org/10.1007/978-3-658-43216-4
+
+[2] A. F. Genovese: **The Interacting Multiple Model Algorithm for Accurate State Estimation of Maneuvering Targets**, Johns Hopkins APL Technical Digest, Volume 22, Number 4, 2001.

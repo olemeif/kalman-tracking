@@ -59,6 +59,39 @@ def plot_all(t, s_true, s_measured, s_est, P_s, v_true, v_diff, v_est, P_v, a_tr
     plt.tight_layout()
     plt.show()
 
+def plot_position_error_comparison(t, s_true, s_measured, s_kf, s_rose, Q, deceleration):
+    """
+    Position error of the raw measurement, of the Kalman filter with constant Q and of the ROSE
+    filter on the same measurements. For a single run, the RMS error at a time step is the
+    absolute error |s - s_true|.
+    Args:
+        t: np.ndarray, time vector
+        s_true: np.ndarray, true position vector
+        s_measured: np.ndarray, measured position vector with noise
+        s_kf: np.ndarray, estimated position vector from the Kalman filter
+        s_rose: np.ndarray, estimated position vector from the ROSE filter
+        Q: float, process noise Var(z_a) of the Kalman filter
+        deceleration: dict with keys t_start_s, duration_s, v_end, to shade the braking phase
+    """
+    curves = ((s_measured, 'Measured', 'red'),
+              (s_kf, f'Kalman, Var(z_a) = {Q:g}', 'tab:blue'),
+              (s_rose, 'ROSE', 'tab:green'))
+
+    plt.figure(figsize=(12, 5))
+    for s, label, color in curves:
+        err = np.abs(s - s_true)
+        plt.plot(t, err, label=f'{label} (RMSE = {np.sqrt(np.mean(err ** 2)):.2f} m)', color=color)
+    t_brake = (deceleration["t_start_s"], deceleration["t_start_s"] + deceleration["duration_s"])
+    plt.axvspan(*t_brake, color='tab:orange', alpha=0.12, label='Braking')
+    plt.title('Position RMS error: measurement vs. Kalman vs. ROSE')
+    plt.xlabel('Time [s]')
+    plt.ylabel('Position RMS error [m]')
+    plt.legend()
+    plt.grid()
+
+    plt.tight_layout()
+    plt.show()
+
 def plot_monte_carlo(t, results, bounds, n_runs, deceleration, start_up_steps):
     """
     Monte Carlo evaluation of the 3rd-order filter, one curve per process noise value Q.

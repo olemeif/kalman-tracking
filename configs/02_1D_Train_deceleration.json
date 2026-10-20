@@ -1,7 +1,10 @@
 {
   "filter": {
     "Q": 0.5,
-    "v_0_prior": 40.0
+    "Q_min": 1.0e-6,
+    "Q_max": 1.0,
+    "v_0_prior": 40.0,
+    "alpha_M": 1.0
   },
   "monte_carlo": {
     "n_runs": 500,
