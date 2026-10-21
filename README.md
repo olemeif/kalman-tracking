@@ -12,7 +12,7 @@ The filters are developed in Python first and then ported to C++. Python remains
 | ----- | ------- | ------ |
 | 1 | 1D Kalman filter (constant velocity), Monte Carlo consistency evaluation (RMSE vs. filter σ, ANEES) | **Done** |
 | 2 | Braking scenario, 3rd-order model, ROSE filter. | **Done** |
-| 3 | 2D tracking of a single target, constant velocity, changing direction | **In progress** |
+| 3 | 2D Surface Radar tracking of a single target, constant velocity, changing direction | **In progress** |
 | 4 | Radar measurements (range, bearing): Extended Kalman filter | Planned |
 | 5 | Changing speed, finding a good model for a maneuvering target (ROSE, IMM) | Planned |
 | 6 | Multi-target tracking: clutter, missed detections, gating, data association, track management | Planned |
@@ -242,6 +242,18 @@ This could be improved by also adding a speed measurement (Doppler GNSS), but fo
 Another option is to use an **IMM** with two models: one for constant speed and one for braking. The IMM can switch between the two models based on the measurements, potentially improving accuracy during maneuvers.
 
 This will be skipped for now. First a tracker for a 2D scenario with changing direction will be implemented, which is more interesting than a 1D scenario with only one maneuver. Later, with changing speed, I may come back to this problem. 
+
+## Stage 3: 2D Surface Radar tracking of a single target, constant velocity, changing direction
+
+This stage is a closer-to-real-life scenario: a 2D surface radar tracks a single target moving at constant speed but changing direction.
+The radar provides position measurements in the x-y plane, the filter estimates the target's position.
+
+The standard deviation of the radar measurement noise was set to 10m.
+
+For the target trajectory, a 90° left and a ~82° right turn were chosen, with straight segments before, between and after the turns. The target speed is constant at 10 m/s.
+
+![2D Surface Radar target trajectory ground truth and measurements](docs/assets/images/03_2D_Surface_Radar_target.png)
+
 
 ## Notation
  
