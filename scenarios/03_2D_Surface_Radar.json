@@ -1,0 +1,53 @@
+{
+  "duration_s": 300.0,
+  "sensors": {
+    "SRA": {
+      "dt_s": 1.0,
+      "sigma_m": 10.0
+    }
+  },
+  "targets": {
+    "constant_velocity": {
+      "p_0": [-1500.0, -1000.0],
+      "v_0": [10.0, 0.0]
+    },
+    "turns": {
+      "p_0": [-1500.0, -1000.0],
+      "v_0": [10.0, 0.0],
+      "maneuvers": [
+        {
+          "t_start_s": 60.0,
+          "duration_s": 20.0,
+          "v_end": [0.0, 10.0]
+        },
+        {
+          "t_start_s": 150.0,
+          "duration_s": 30.0,
+          "v_end": [8.0, -6.0]
+        }
+      ]
+    },
+    "turns_and_speed_changes": {
+      "p_0": [-1500.0, -1000.0],
+      "v_0": [10.0, 0.0],
+      "maneuvers": [
+        {
+          "t_start_s": 60.0,
+          "duration_s": 20.0,
+          "v_end": [0.0, 15.0]
+        },
+        {
+          "t_start_s": 150.0,
+          "duration_s": 30.0,
+          "v_end": [3.0, -4.0]
+        },
+        {
+          "t_start_s": 220.0,
+          "duration_s": 20.0,
+          "v_end": [8.0, 6.0]
+        }
+      ]
+    }
+  },
+  "seed": 31
+}

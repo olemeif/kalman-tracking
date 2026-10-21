@@ -3,11 +3,14 @@ import argparse
 from Train_1D import Train_1D, monte_carlo
 from Train_1D_deceleration import Train_1D_deceleration
 from Train_1D_deceleration import monte_carlo as monte_carlo_deceleration
+from Surface_Radar_2D import Surface_Radar_2D
+from Surface_Radar_2D import monte_carlo as monte_carlo_surface_radar
 
 # scenario -> {mode: function}. A new scenario or mode is one more entry here.
 SCENARIOS = {
     "train": {"run": Train_1D.main, "mc": monte_carlo.main},
     "decel": {"run": Train_1D_deceleration.main, "mc": monte_carlo_deceleration.main},
+    "surface": {"run": Surface_Radar_2D.main, "mc": monte_carlo_surface_radar.main},
 }
 
 def parse_args(argv=None):
@@ -17,7 +20,8 @@ def parse_args(argv=None):
     )
     parser.add_argument("scenario", nargs="?", choices=SCENARIOS,
                         help="train: Stage 1, constant speed (2nd order). "
-                             "decel: Stage 2, braking train (3rd order).")
+                             "decel: Stage 2, braking train (3rd order). "
+                             "surface: Stage 3, 2D surface radar (SRA) target.")
     parser.add_argument("mode", nargs="?", choices=["run", "mc"], default="run",
                         help="run: one noise realization with plots (default). "
                              "mc: Monte Carlo evaluation (RMSE, ANEES).")
